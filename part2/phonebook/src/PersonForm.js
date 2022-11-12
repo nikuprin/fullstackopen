@@ -44,7 +44,7 @@ const PersonForm = ({ persons, setPersons }) => {
     }
     const personObject = {
       name: newName,
-      phone: newPhone,
+      number: newPhone,
     };
     create(personObject)
       .then((response) => {
