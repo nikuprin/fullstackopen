@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { create, update } from "./services/person";
+import { create } from "./services/person";
 import Notification from "./Notification";
 
 const PersonForm = ({ persons, setPersons }) => {
@@ -24,7 +24,7 @@ const PersonForm = ({ persons, setPersons }) => {
         )
       ) {
         const updateObect = { ...exists, number: newPhone };
-        update(exists.id, updateObect)
+        create(updateObect)
           .then((response) => {
             setPersons(
               persons.map((person) =>
