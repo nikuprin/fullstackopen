@@ -25,4 +25,4 @@ try {
   console.error(error);
 }
 
-export default model("Note", personSchema);
+export default model("Person", personSchema);
