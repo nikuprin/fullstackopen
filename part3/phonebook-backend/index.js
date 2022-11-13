@@ -1,127 +1,93 @@
-require("dotenv").config();
+import * as dotenv from "dotenv";
+import cors from "cors";
+import express from "express";
+import * as mw from "./middleware.js";
+import Person from "./models/person.js";
 
-const cors = require("cors");
-const express = require("express");
-const morgan = require("morgan");
+dotenv.config();
+const PORT = process.env.PORT;
+
 const app = express();
-
-morgan.token("body", function (req, res) {
-  return JSON.stringify(req.body);
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });
 
 app.use(cors());
 app.use(express.json());
+app.use(mw.tinyLogger);
+app.use(mw.postLogger);
 
-app.use(
-  morgan("tiny", {
-    skip: function (req, res) {
-      return req.method === "POST";
-    },
-  })
-);
+app.get("/api/persons", async (request, response) => {
+  const result = await Person.find({});
+  response.json(result);
+});
 
-app.use(
-  morgan(
-    ":method :url :status :res[content-length] - :response-time ms :body",
-    {
-      skip: function (req, res) {
-        return req.method !== "POST";
-      },
+app.post("/api/persons", async (request, response) => {
+  try {
+    const body = request.body;
+    if (!body.name) {
+      return response.status(400).json({
+        error: "name missing",
+      });
     }
-  )
-);
 
-let persons = [
-  {
-    id: 1,
-    name: "Arto Hellas",
-    number: "040-123456",
-  },
-  {
-    id: 2,
-    name: "Ada Lovelace",
-    number: "39-44-5323523",
-  },
-  {
-    id: 3,
-    name: "Dan Abramov",
-    number: "12-43-234345",
-  },
-  {
-    id: 4,
-    name: "Mary Poppendieck",
-    number: "39-23-6423122",
-  },
-];
+    if (!body.number) {
+      return response.status(400).json({
+        error: "number missing",
+      });
+    }
 
-app.get("/api/persons", (request, response) => {
-  response.json(persons);
-});
+    const match = await Person.find({ name: body.name });
+    if (match.length > 0) {
+      const person = await Person.findByIdAndUpdate(
+        match[0]._id,
+        { number: body.number },
+        { new: true }
+      );
+      return response.json(person);
+    }
 
-const generateId = () => {
-  return Math.floor(Math.random() * 1000);
-};
-
-app.post("/api/persons", (request, response) => {
-  const body = request.body;
-  if (!body.name) {
-    return response.status(400).json({
-      error: "name missing",
+    const person = new Person({
+      name: body.name,
+      number: body.number,
     });
-  }
 
-  const exists = persons.find(
-    (person) => person.name.toUpperCase() === body.name.toUpperCase()
-  );
-
-  if (exists) {
-    return response.status(400).json({
-      error: "number already exists",
-    });
-  }
-
-  if (!body.number) {
-    return response.status(400).json({
-      error: "number missing",
-    });
-  }
-
-  const person = {
-    id: generateId(),
-    name: body.name,
-    number: body.number,
-  };
-
-  persons = persons.concat(person);
-
-  response.json(person);
-});
-
-app.get("/api/persons/:id", (request, response) => {
-  const id = Number(request.params.id);
-  const person = persons.find((person) => person.id === id);
-  if (person) {
+    await person.save();
     response.json(person);
-    return;
+  } catch (error) {
+    console.error(error);
+    response.status(500);
   }
-  response.status(404).end();
 });
 
-app.delete("/api/persons/:id", (request, response) => {
-  const id = Number(request.params.id);
-  persons = persons.filter((person) => person.id !== id);
-
-  response.status(204).end();
+app.get("/api/persons/:id", async (request, response) => {
+  try {
+    const person = await Person.findById(request.params.id);
+    response.json(person);
+    response.status(404).end();
+  } catch (error) {
+    console.error(error);
+  }
 });
 
-app.get("/api/info", (request, response) => {
-  console.log(request);
-  response.send(
-    `Phonebook has info for ${persons.length} people</br></br>${Date()}`
-  );
+app.delete("/api/persons/:id", async (request, response) => {
+  try {
+    await Person.findByIdAndRemove(request.params.id);
+    response.status(204).end();
+  } catch (error) {
+    console.error(error);
+  }
 });
 
-const PORT = 3001;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+app.get("/api/info", async (request, response) => {
+  try {
+    const count = await Person.estimatedDocumentCount();
+    response.send(`Phonebook has info for ${count} people</br></br>${Date()}`);
+  } catch (error) {
+    console.error(error);
+    response.status(500);
+  }
 });
+
+app.use(mw.unknownEndpoint);
+app.use(mw.errorHandler);
