@@ -22,7 +22,7 @@ app.get("/api/persons", async (request, response) => {
   response.json(result);
 });
 
-app.post("/api/persons", async (request, response) => {
+app.post("/api/persons", async (request, response, next) => {
   try {
     const body = request.body;
     if (!body.name) {
@@ -39,12 +39,16 @@ app.post("/api/persons", async (request, response) => {
 
     const match = await Person.find({ name: body.name });
     if (match.length > 0) {
-      const person = await Person.findByIdAndUpdate(
-        match[0]._id,
-        { number: body.number },
-        { new: true }
-      );
-      return response.json(person);
+      try {
+        const person = await Person.findByIdAndUpdate(
+          match[0]._id,
+          { number: body.number },
+          { new: true, runValidators: true }
+        );
+        return response.json(person);
+      } catch (error) {
+        next(error);
+      }
     }
 
     const person = new Person({
@@ -55,8 +59,7 @@ app.post("/api/persons", async (request, response) => {
     await person.save();
     response.json(person);
   } catch (error) {
-    console.error(error);
-    response.status(500);
+    next(error);
   }
 });
 

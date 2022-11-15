@@ -22,7 +22,11 @@ export const errorHandler = (error, _request, response, next) => {
     return response.status(400).send({ error: "malformatted id" });
   }
 
-  next(error);
+  if (error.name === "ValidationError") {
+    return response.status(400).json({ error: error.message });
+  }
+
+  return response.status(500).end;
 };
 
 export const unknownEndpoint = (_request, response) => {
