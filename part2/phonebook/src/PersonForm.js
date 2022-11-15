@@ -10,7 +10,7 @@ const PersonForm = ({ persons, setPersons }) => {
   const showNotification = async (msg, err) => {
     const newObject = { message: msg, error: err };
     setNotification(newObject);
-    await new Promise((r) => setTimeout(r, 2000));
+    await new Promise((r) => setTimeout(r, 5000));
     setNotification(null);
   };
 
@@ -34,10 +34,7 @@ const PersonForm = ({ persons, setPersons }) => {
           })
           .catch((err) => {
             console.error(err);
-            showNotification(
-              `Information of ${newName} has already been removed from server`,
-              true
-            );
+            showNotification(err.response.data.error, true);
           });
       }
       return;
@@ -54,7 +51,8 @@ const PersonForm = ({ persons, setPersons }) => {
         setNewPhone("");
       })
       .catch((err) => {
-        console.console.error(err);
+        console.error(err);
+        showNotification(err.response.data.error, true);
       });
   };
 
