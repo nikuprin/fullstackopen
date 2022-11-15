@@ -22,9 +22,9 @@ const App = () => {
 
   return (
     <div>
-      <h2>Phonebook</h2>
+      <h1>Phonebook</h1>
       <Filter filter={filter} setFilter={setFilter} />
-      <h3>Add new</h3>
+      <h2>Add new</h2>
       <PersonForm persons={persons} setPersons={setPersons} />
       <h2>Numbers</h2>
       <Persons persons={filteredPersons} setPersons={setPersons} />
