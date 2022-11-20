@@ -9,10 +9,9 @@ const api = supertest(app);
 
 beforeEach(async () => {
   await Blog.deleteMany({});
-  let blogObject = new Blog(initialBlogs[0]);
-  await blogObject.save();
-  blogObject = new Blog(initialBlogs[1]);
-  await blogObject.save();
+  const blogObjects = initialBlogs.map((b) => new Blog(b));
+  const promiseArray = blogObjects.map((b) => b.save());
+  await Promise.all(promiseArray);
 });
 
 test('blogs are returned as json', async () => {
