@@ -9,9 +9,25 @@ blogsRouter.get('/', async (request, response) => {
 });
 
 blogsRouter.post('/', async (request, response) => {
+  const match = await Blog.find({ title: request.body.title });
+  if (match.length > 0) {
+    const person = await Blog.findByIdAndUpdate(
+      // eslint-disable-next-line no-underscore-dangle
+      match[0]._id,
+      { likes: request.body.likes },
+      { new: true, runValidators: true }
+    );
+    return response.json(person);
+  }
+
   const blog = new Blog(request.body);
   const result = await blog.save();
-  response.status(201).json(result);
+  return response.status(201).json(result);
+});
+
+blogsRouter.delete('/:id', async (request, response) => {
+  await Blog.findByIdAndRemove(request.params.id);
+  response.status(204).end();
 });
 
 export default blogsRouter;
