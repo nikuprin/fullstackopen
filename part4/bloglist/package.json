@@ -24,9 +24,11 @@
     "test": "NODE_ENV=test node --experimental-vm-modules node_modules/jest/bin/jest.js --verbose --runInBand"
   },
   "dependencies": {
+    "@jest/globals": "^29.3.1",
     "cors": "^2.8.5",
     "dotenv": "^16.0.3",
     "express": "^4.18.2",
+    "express-async-errors": "^3.1.1",
     "http": "^0.0.1-security",
     "mongoose": "^6.7.2"
   },
