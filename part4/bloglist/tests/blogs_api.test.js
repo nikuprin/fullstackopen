@@ -1,9 +1,11 @@
+import bcrypt from 'bcrypt';
 import mongoose from 'mongoose';
 import supertest from 'supertest';
-import { expect, test, beforeEach, afterAll } from '@jest/globals';
+import { expect, test, beforeEach, afterAll, describe } from '@jest/globals';
 import app from '../app.js';
 import Blog from '../models/blog.js';
-import { initialBlogs, blogsInDb } from './test_helper.js';
+import User from '../models/user.js';
+import { initialBlogs, blogsInDb, usersInDb } from './test_helper.js';
 
 const api = supertest(app);
 
@@ -96,6 +98,106 @@ test('updates blog', async () => {
   const blogs = await blogsInDb();
   const blog = blogs.find((b) => b.title === 'HTML is easy');
   expect(blog.likes).toBe(1000);
+});
+
+describe('when there is initially one user in db', () => {
+  beforeEach(async () => {
+    await User.deleteMany({});
+
+    const passwordHash = await bcrypt.hash('sekret', 10);
+    const user = new User({ username: 'root', passwordHash });
+
+    await user.save();
+  });
+
+  test('creation succeeds with a fresh username', async () => {
+    const usersAtStart = await usersInDb();
+
+    const newUser = {
+      username: 'mluukkai',
+      name: 'Matti Luukkainen',
+      password: 'salainen',
+    };
+
+    await api
+      .post('/api/users')
+      .send(newUser)
+      .expect(201)
+      .expect('Content-Type', /application\/json/);
+
+    const usersAtEnd = await usersInDb();
+    expect(usersAtEnd).toHaveLength(usersAtStart.length + 1);
+
+    const usernames = usersAtEnd.map((u) => u.username);
+    expect(usernames).toContain(newUser.username);
+  });
+
+  test('creation fails with proper statuscode and message if username already taken', async () => {
+    const usersAtStart = await usersInDb();
+
+    const newUser = {
+      username: 'root',
+      name: 'Superuser',
+      password: 'salainen',
+    };
+
+    const result = await api
+      .post('/api/users')
+      .send(newUser)
+      .expect(400)
+      .expect('Content-Type', /application\/json/);
+
+    expect(result.body.error).toContain('username must be unique');
+
+    const usersAtEnd = await usersInDb();
+    expect(usersAtEnd).toEqual(usersAtStart);
+  });
+
+  test('creation fails with proper statuscode and message if username is shorter than 3 chars', async () => {
+    const usersAtStart = await usersInDb();
+
+    const newUser = {
+      username: 'u',
+      name: 'Some Name',
+      password: '123456',
+    };
+
+    const result = await api
+      .post('/api/users')
+      .send(newUser)
+      .expect(400)
+      .expect('Content-Type', /application\/json/);
+
+    expect(result.body.error).toContain(
+      'is shorter than the minimum allowed length'
+    );
+
+    const usersAtEnd = await usersInDb();
+    expect(usersAtEnd).toEqual(usersAtStart);
+  });
+
+  test('creation fails with proper statuscode and message if password is shorter than 3 chars', async () => {
+    const usersAtStart = await usersInDb();
+
+    const newUser = {
+      username: 'uname',
+      name: 'Some Name',
+      password: '1',
+    };
+
+    const result = await api
+      .post('/api/users')
+      .send(newUser)
+      .expect(400)
+      .expect('Content-Type', /application\/json/);
+
+    expect(result.body.error).toContain(
+      'password must be at least 3 characters long'
+    );
+
+    const usersAtEnd = await usersInDb();
+    expect(usersAtEnd).toEqual(usersAtStart);
+  });
 });
 
 afterAll(() => {
