@@ -1,7 +1,6 @@
 /* eslint-disable no-underscore-dangle */
 import express from 'express';
 import Blog from '../models/blog.js';
-import User from '../models/user.js';
 
 const blogsRouter = express.Router();
 
@@ -11,8 +10,12 @@ blogsRouter.get('/', async (request, response) => {
 });
 
 blogsRouter.post('/', async (request, response) => {
-  const { body } = request;
-  const user = await User.findById(body.userId);
+  const { body, user } = request;
+  if (!user) {
+    return response.status(401).json({
+      error: 'token is missing',
+    });
+  }
   const match = await Blog.find({ title: body.title });
   if (match.length > 0) {
     const person = await Blog.findByIdAndUpdate(
@@ -36,8 +39,14 @@ blogsRouter.post('/', async (request, response) => {
 });
 
 blogsRouter.delete('/:id', async (request, response) => {
+  const blog = await Blog.findById(request.params.id);
+  if (blog.user.toString() !== request.user.id.toString()) {
+    return response.status(401).json({
+      error: 'blog can be deleted only by the user who added the blog',
+    });
+  }
   await Blog.findByIdAndRemove(request.params.id);
-  response.status(204).end();
+  return response.status(204).end();
 });
 
 export default blogsRouter;

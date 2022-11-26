@@ -1,9 +1,9 @@
 /* eslint-disable no-console */
-export const info = (...params) => {
+const info = (...params) => {
   console.log(...params);
 };
 
-export const error = (...params) => {
+const error = (...params) => {
   console.error(...params);
 };
 

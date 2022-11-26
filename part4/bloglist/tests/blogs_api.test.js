@@ -1,3 +1,4 @@
+/* eslint-disable no-underscore-dangle */
 import bcrypt from 'bcrypt';
 import mongoose from 'mongoose';
 import supertest from 'supertest';
@@ -5,13 +6,32 @@ import { expect, test, beforeEach, afterAll, describe } from '@jest/globals';
 import app from '../app.js';
 import Blog from '../models/blog.js';
 import User from '../models/user.js';
-import { initialBlogs, blogsInDb, usersInDb } from './test_helper.js';
+import {
+  initialBlogs,
+  blogsInDb,
+  usersInDb,
+  addUser,
+  getToken,
+} from './test_helper.js';
 
 const api = supertest(app);
 
 beforeEach(async () => {
   await Blog.deleteMany({});
-  const blogObjects = initialBlogs.map((b) => new Blog(b));
+  await User.deleteMany({});
+  await addUser();
+  const username = 'root';
+  const user = await User.findOne({ username });
+  const blogObjects = initialBlogs.map(
+    (b) =>
+      new Blog({
+        title: b.title,
+        author: b.author,
+        url: b.url,
+        likes: b.likes,
+        user: user._id,
+      })
+  );
   const promiseArray = blogObjects.map((b) => b.save());
   await Promise.all(promiseArray);
 });
@@ -44,8 +64,10 @@ test('creates blog', async () => {
     url: 'new/url',
     likes: 200,
   };
+  const token = await getToken();
   await api
     .post('/api/blogs')
+    .set('Authorization', `bearer ${token}`)
     .send(newBlog)
     .expect(201)
     .expect('Content-Type', /application\/json/);
@@ -55,14 +77,32 @@ test('creates blog', async () => {
   expect(titles).toContain('New blog');
 });
 
+test('fails to create blog without a token', async () => {
+  const newBlog = {
+    title: 'New blog',
+    author: 'Some author',
+    url: 'new/url',
+    likes: 200,
+  };
+  await api
+    .post('/api/blogs')
+    .send(newBlog)
+    .expect(401)
+    .expect('Content-Type', /application\/json/);
+  const blogs = await blogsInDb();
+  expect(blogs).toHaveLength(initialBlogs.length);
+});
+
 test('likes property defaults to zero when missing from the request', async () => {
   const newBlog = {
     title: 'New blog',
     author: 'Some author',
     url: 'new/url',
   };
+  const token = await getToken();
   await api
     .post('/api/blogs')
+    .set('Authorization', `bearer ${token}`)
     .send(newBlog)
     .expect(201)
     .expect('Content-Type', /application\/json/);
@@ -72,18 +112,28 @@ test('likes property defaults to zero when missing from the request', async () =
 
 test('title and url are required', async () => {
   const newBlog = { author: 'Some Author' };
-  await api.post('/api/blogs').send(newBlog).expect(400);
+  const token = await getToken();
+  await api
+    .post('/api/blogs')
+    .set('Authorization', `bearer ${token}`)
+    .send(newBlog)
+    .expect(400);
 });
 
 test('deletes blog', async () => {
   const blogsBefore = await blogsInDb();
   const { id } = blogsBefore[0];
-  await api.delete(`/api/blogs/${id}`).expect(204);
+  const token = await getToken();
+  await api
+    .delete(`/api/blogs/${id}`)
+    .set('Authorization', `bearer ${token}`)
+    .expect(204);
   const blogsAfter = await blogsInDb();
   expect(blogsAfter).toHaveLength(blogsBefore.length - 1);
 });
 
 test('updates blog', async () => {
+  const token = await getToken();
   const newBlog = {
     title: 'HTML is easy',
     author: 'Some author',
@@ -92,6 +142,7 @@ test('updates blog', async () => {
   };
   await api
     .post('/api/blogs')
+    .set('Authorization', `bearer ${token}`)
     .send(newBlog)
     .expect(200)
     .expect('Content-Type', /application\/json/);
