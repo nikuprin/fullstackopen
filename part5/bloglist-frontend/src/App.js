@@ -20,9 +20,9 @@ const App = () => {
         username,
         password,
       });
+      window.localStorage.setItem('loggedBlogAppUser', JSON.stringify(user));
       setUser(user);
       blogService.setToken(user.token);
-      window.localStorage.setItem('loggedNoteappUser', JSON.stringify(user));
       setUsername('');
       setPassword('');
     } catch (exception) {
@@ -41,6 +41,20 @@ const App = () => {
   useEffect(() => {
     fetchBlogs();
   }, [fetchBlogs]);
+
+  useEffect(() => {
+    const loggedUserJSON = window.localStorage.getItem('loggedBlogAppUser');
+    if (loggedUserJSON) {
+      const user = JSON.parse(loggedUserJSON);
+      setUser(user);
+      blogService.setToken(user.token);
+    }
+  }, []);
+
+  const logOut = () => {
+    window.localStorage.removeItem('loggedBlogAppUser');
+    setUser(null);
+  };
 
   const loginForm = () => (
     <div>
@@ -85,7 +99,9 @@ const App = () => {
       ) : (
         <div>
           <h2>blogs</h2>
-          <p>{user.name} logged in</p>
+          <p>
+            {user.name} logged in <button onClick={logOut}>log out</button>
+          </p>
           {blogForm()}
         </div>
       )}
